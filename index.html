@@ -1,681 +1,1415 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>수업시간 자리 바꾸기 게임 (Seat Swapper)</title>
-    <style>
-        :root {
-            --bg-color: #2c3e50;
-            --classroom-bg: #eccc68;
-            --blackboard-bg: #2ed573;
-            --desk-color: #ff7f50;
-            --text-color: #333;
-            --primary: #48dbfb;
-            --accent: #ff6b6b;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            user-select: none;
-            font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            color: #fff;
-            overflow: hidden;
-        }
-
-        #game-container {
-            width: 100%;
-            max-width: 600px;
-            background: #f1f2f6;
-            border-radius: 16px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            position: relative;
-            color: var(--text-color);
-        }
-
-        /* 헤더 & 상태창 */
-        header {
-            background: #353b48;
-            color: #fff;
-            padding: 12px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 4px solid #2f3640;
-        }
-
-        .stat-box {
-            display: flex;
-            gap: 15px;
-            font-weight: bold;
-            font-size: 0.95rem;
-        }
-
-        .stat-item {
-            background: rgba(255,255,255,0.1);
-            padding: 4px 10px;
-            border-radius: 20px;
-        }
-
-        /* 메인 교실 영역 */
-        .classroom {
-            background: #f7d794;
-            background-image: radial-gradient(#f5cd79 15%, transparent 16%);
-            background-size: 20px 20px;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative;
-        }
-
-        /* 칠판 & 선생님 존 */
-        .teacher-area {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-bottom: 15px;
-            position: relative;
-        }
-
-        .blackboard {
-            width: 90%;
-            height: 70px;
-            background: #1e3799;
-            border: 6px solid #b8e994;
-            border-radius: 8px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: #fff;
-            font-weight: bold;
-            font-size: 1.1rem;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
-            position: relative;
-        }
-
-        .teacher-desk {
-            margin-top: 10px;
-            width: 80px;
-            height: 35px;
-            background: #b71540;
-            border-radius: 6px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-        }
-
-        .teacher {
-            width: 44px;
-            height: 44px;
-            background: #f8c291;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 1.6rem;
-            position: absolute;
-            top: -20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            transition: transform 0.2s ease;
-        }
-
-        .teacher.looking-back {
-            transform: scale(1.15);
-            border: 3px solid #eb2f06;
-            animation: shake 0.2s infinite;
-        }
-
-        .teacher-status-bubble {
-            position: absolute;
-            top: -30px;
-            right: -20px;
-            background: #fff;
-            color: #000;
-            padding: 3px 8px;
-            border-radius: 10px;
-            font-size: 0.8rem;
-            font-weight: bold;
-            border: 2px solid #333;
-            display: none;
-            z-index: 10;
-        }
-
-        /* 책상 그리드 (학생들) */
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            width: 100%;
-            max-width: 440px;
-            margin: 10px 0;
-        }
-
-        .seat {
-            aspect-ratio: 1;
-            background: #e58e26;
-            border-radius: 12px;
-            border: 3px solid #b71540;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            position: relative;
-            box-shadow: 0 4px 0 #b71540;
-            transition: all 0.15s ease;
-        }
-
-        .seat:active {
-            transform: translateY(2px);
-            box-shadow: 0 2px 0 #b71540;
-        }
-
-        .seat.target {
-            background: #78e08f;
-            border-color: #3c6382;
-            box-shadow: 0 4px 0 #3c6382;
-            animation: pulse 1.5s infinite;
-        }
-
-        .seat.target::after {
-            content: '목표';
-            position: absolute;
-            top: -8px;
-            background: #079992;
-            color: white;
-            font-size: 0.65rem;
-            padding: 1px 5px;
-            border-radius: 8px;
-            font-weight: bold;
-        }
-
-        .seat.swappable {
-            outline: 3px dashed #0c2461;
-            animation: bounce 0.6s infinite alternate;
-        }
-
-        .student-avatar {
-            font-size: 1.8rem;
-            pointer-events: none;
-            transition: transform 0.2s;
-        }
-
-        .student-name {
-            font-size: 0.7rem;
-            font-weight: bold;
-            color: #fff;
-            background: rgba(0,0,0,0.5);
-            padding: 1px 5px;
-            border-radius: 4px;
-            margin-top: 2px;
-            pointer-events: none;
-        }
-
-        .player-seat {
-            border-color: #0652DD;
-            background: #70a1ff;
-        }
-
-        /* 컨트롤 및 지침 */
-        .controls-info {
-            background: #2f3640;
-            color: #dcdde1;
-            padding: 12px;
-            text-align: center;
-            font-size: 0.85rem;
-        }
-
-        .d-pad {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-top: 8px;
-        }
-
-        .btn {
-            background: #48dbfb;
-            color: #2f3640;
-            border: none;
-            padding: 8px 16px;
-            font-weight: bold;
-            border-radius: 8px;
-            cursor: pointer;
-            box-shadow: 0 3px 0 #10ac84;
-            transition: all 0.1s;
-        }
-
-        .btn:active {
-            transform: translateY(2px);
-            box-shadow: 0 1px 0 #10ac84;
-        }
-
-        /* 오버레이 (게임 시작/끝/패배 모달) */
-        .overlay {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.85);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-content: 100;
-            color: #fff;
-            padding: 20px;
-            text-align: center;
-        }
-
-        .overlay h1 {
-            font-size: 2rem;
-            color: #fca510;
-            margin-bottom: 10px;
-        }
-
-        .overlay p {
-            margin-bottom: 20px;
-            font-size: 0.95rem;
-            line-height: 1.5;
-            color: #c8d6e5;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        /* 애니메이션 */
-        @keyframes shake {
-            0% { transform: scale(1.15) rotate(0deg); }
-            25% { transform: scale(1.15) rotate(-5deg); }
-            75% { transform: scale(1.15) rotate(5deg); }
-            100% { transform: scale(1.15) rotate(0deg); }
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.03); }
-            100% { transform: scale(1); }
-        }
-
-        @keyframes bounce {
-            from { transform: translateY(0); }
-            to { transform: translateY(-4px); }
-        }
-    </style>
-</head>
-<body>
-
-<div id="game-container">
-    <header>
-        <div class="stat-box">
-            <div class="stat-item">단계: <span id="stage-num">1</span>/3</div>
-            <div class="stat-item">시간: <span id="timer">30</span>초</div>
-        </div>
-        <div class="stat-item" style="background: #eb2f06;">경고: <span id="alert-status">안전</span></div>
-    </header>
-
-    <div class="classroom">
-        <div class="teacher-area">
-            <div class="blackboard" id="blackboard-text">
-                수학 공식: A² + B² = C²
-            </div>
-            <div class="teacher-desk">
-                <div class="teacher" id="teacher-avatar">👨‍🏫</div>
-                <div class="teacher-status-bubble" id="status-bubble">!</div>
-            </div>
-        </div>
-
-        <div class="grid-container" id="grid">
-            <!-- 4x4 책상 동적 생성 -->
-        </div>
-    </div>
-
-    <div class="controls-info">
-        💡 <b>게임 방법:</b> 인접한 자리의 친구를 <b>클릭</b>하거나 <b>방향키</b>로 자리를 바꾸세요!<br>
-        선생님이 뒤돌아볼 때 자리를 바꾸면 걸립니다!
-    </div>
-
-    <!-- 모달 오버레이들 -->
-    <div id="start-overlay" class="overlay">
-        <h1>🏫 자리 바꾸기 게임</h1>
-        <p>수업시간! 선생님 몰래 맨 앞줄에서<br>맨 뒷줄 <b>'명당 자리(🎯)'</b>까지 무사히 이동하세요!<br><br>선생님이 칠판을 볼 때만 자리를 이동해야 합니다.</p>
-        <button class="btn" onclick="startGame()">수업 시작! (게임 개시)</button>
-    </div>
-
-    <div id="gameover-overlay" class="overlay hidden">
-        <h1 style="color: #ff6b6b;">😱 딱 걸렸다!</h1>
-        <p id="fail-reason">선생님이 자리를 바꾸는 모습을 목격하셨습니다.<br>교무실로 따라오렴!</p>
-        <button class="btn" onclick="restartGame()">다시 도전하기</button>
-    </div>
-
-    <div id="stage-clear-overlay" class="overlay hidden">
-        <h1 style="color: #1dd1a1;">🎉 스테이지 클리어!</h1>
-        <p id="clear-msg">선생님 감시를 뚫고 명당자리에 앉았습니다!</p>
-        <button class="btn" onclick="nextStage()">다음 교시(스테이지)로</button>
-    </div>
-
-    <div id="victory-overlay" class="overlay hidden">
-        <h1 style="color: #fabca1;">👑 전설의 땡땡이 마스터!</h1>
-        <p>모든 교시의 감시를 뚫고 최고의 꿀자리를 사수했습니다!<br>축하합니다!</p>
-        <button class="btn" onclick="restartGame()">처음부터 다시하기</button>
-    </div>
-</div>
-
-<script>
-    // Audio Context (사운드 효과 생성)
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-    function playSound(type) {
-        if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-
-        const now = audioCtx.currentTime;
-
-        if (type === 'move') {
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(300, now);
-            osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
-            gain.gain.setValueAtTime(0.2, now);
-            gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
-            osc.start(now);
-            osc.stop(now + 0.1);
-        } else if (type === 'warn') {
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(150, now);
-            gain.gain.setValueAtTime(0.3, now);
-            gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
-            osc.start(now);
-            osc.stop(now + 0.2);
-        } else if (type === 'caught') {
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(400, now);
-            osc.frequency.linearRampToValueAtTime(100, now + 0.4);
-            gain.gain.setValueAtTime(0.4, now);
-            gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
-            osc.start(now);
-            osc.stop(now + 0.4);
-        } else if (type === 'win') {
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(400, now);
-            osc.frequency.setValueAtTime(600, now + 0.1);
-            osc.frequency.setValueAtTime(800, now + 0.2);
-            gain.gain.setValueAtTime(0.2, now);
-            gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
-            osc.start(now);
-            osc.stop(now + 0.4);
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>마이 스쿨 (My School) - 중3 맞춤형 고등학교 추천 시스템</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      background-color: #f8fafc;
     }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .step-card {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .school-card {
+      transition: all 0.25s ease-out;
+    }
+    .school-card:hover {
+      transform: translateY(-4px);
+    }
+  </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col antialiased">
 
-    // 게임 설정 데이터
-    const ROWS = 4;
-    const COLS = 4;
-    
-    const STUDENT_EMOJIS = ['👦', '👧', '🧑', '👨', '👩', '🧒', '👓', '🧢'];
-    const TEACHER_EMOJIS = ['👨‍🏫', '👩‍🏫', '🧐'];
+  <!-- Header Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3 cursor-pointer" onclick="resetApp()">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white font-black text-xl shadow-md shadow-indigo-200">
+          M
+        </div>
+        <div>
+          <span class="text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600">마이 스쿨</span>
+          <span class="hidden sm:inline-block text-xs text-slate-400 font-medium ml-2 border-l border-slate-200 pl-2">중3 맞춤형 고교 진학 컨설팅</span>
+        </div>
+      </div>
 
-    const STAGE_CONFIG = [
-        { time: 35, teacherName: '온화한 김선생님', lookIntervalMin: 2500, lookIntervalMax: 4500, warnDuration: 1200, lookDuration: 1800 },
-        { time: 25, teacherName: '깐깐한 이선생님', lookIntervalMin: 2000, lookIntervalMax: 3500, warnDuration: 800, lookDuration: 2000 },
-        { time: 20, teacherName: '족집게 박선생님', lookIntervalMin: 1200, lookIntervalMax: 2500, warnDuration: 500, lookDuration: 2200 }
+      <div class="flex items-center gap-3">
+        <button onclick="toggleBookmarksModal()" class="relative p-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50/50 transition">
+          <i class="fa-solid fa-bookmark text-lg"></i>
+          <span id="bookmarkBadge" class="hidden absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-sm">0</span>
+        </button>
+        <button onclick="resetApp()" class="hidden sm:flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-xl transition">
+          <i class="fa-solid fa-rotate-right"></i> 다시 시작
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col">
+
+    <!-- Progress Step Bar -->
+    <div id="stepBarContainer" class="mb-8">
+      <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div class="flex items-center justify-between max-w-3xl mx-auto relative">
+          <!-- Step Line Background -->
+          <div class="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-100 -z-0"></div>
+          <!-- Step Active Line -->
+          <div id="stepActiveBar" class="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-indigo-600 transition-all duration-500 -z-0" style="width: 0%;"></div>
+
+          <!-- Step 1 -->
+          <div class="step-node relative z-10 flex flex-col items-center gap-2 cursor-pointer" onclick="goToStep(1)">
+            <div id="stepCircle1" class="w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm shadow-md ring-4 ring-indigo-50 transition-all duration-300">
+              1
+            </div>
+            <span id="stepText1" class="text-xs font-bold text-indigo-600 whitespace-nowrap">지역 & 중학교</span>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="step-node relative z-10 flex flex-col items-center gap-2 cursor-pointer" onclick="goToStep(2)">
+            <div id="stepCircle2" class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 font-bold flex items-center justify-center text-sm transition-all duration-300">
+              2
+            </div>
+            <span id="stepText2" class="text-xs font-semibold text-slate-400 whitespace-nowrap">성별 & 고교유형</span>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="step-node relative z-10 flex flex-col items-center gap-2 cursor-pointer" onclick="goToStep(3)">
+            <div id="stepCircle3" class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 font-bold flex items-center justify-center text-sm transition-all duration-300">
+              3
+            </div>
+            <span id="stepText3" class="text-xs font-semibold text-slate-400 whitespace-nowrap">성적 진단</span>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="step-node relative z-10 flex flex-col items-center gap-2 cursor-pointer" onclick="goToStep(4)">
+            <div id="stepCircle4" class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 font-bold flex items-center justify-center text-sm transition-all duration-300">
+              4
+            </div>
+            <span id="stepText4" class="text-xs font-semibold text-slate-400 whitespace-nowrap">선호 과목</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Wizard Forms Container -->
+    <div id="wizardContainer" class="flex-1 flex flex-col justify-center max-w-3xl mx-auto w-full">
+
+      <!-- STEP 1: Region & School -->
+      <div id="step1" class="step-card bg-white p-6 sm:p-10 rounded-3xl border border-slate-200/80 shadow-md">
+        <div class="mb-8">
+          <span class="inline-block px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold mb-2">Step 1 / 4</span>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">현재 거주 지역과 중학교를 입력하세요</h2>
+          <p class="text-slate-500 text-sm mt-1">실제 통학 거리 및 통학 시간을 계산하여 완벽한 맞춤 학교를 추천해 드립니다.</p>
+        </div>
+
+        <div class="space-y-6">
+          <!-- City & District Cascading Select -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-2">시/도 선택 <span class="text-rose-500">*</span></label>
+              <select id="sidoSelect" onchange="handleSidoChange()" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 bg-slate-50/50">
+                <option value="">시/도를 선택하세요</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-2">시/군/구 선택 <span class="text-rose-500">*</span></label>
+              <select id="sigunguSelect" onchange="handleSigunguChange()" disabled class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-400">
+                <option value="">시/도를 먼저 선택하세요</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Dong / Neighborhood -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-2">읍/면/동 선택 <span class="text-rose-500">*</span></label>
+            <select id="dongSelect" onchange="handleDongChange()" disabled class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-400">
+              <option value="">구/시를 먼저 선택하세요</option>
+            </select>
+            <!-- Custom Dong Input -->
+            <input type="text" id="customDongInput" placeholder="동/읍/면 이름을 직접 입력하세요 (예: 삼청동)" class="hidden mt-3 w-full px-4 py-3 rounded-xl border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium">
+          </div>
+
+          <!-- Middle School -->
+          <div class="pt-2 border-t border-slate-100">
+            <label class="block text-xs font-bold text-slate-600 mb-2">현재 재학 중인 중학교 <span class="text-rose-500">*</span></label>
+            <select id="middleSchoolSelect" onchange="handleMiddleSchoolChange()" disabled class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-400">
+              <option value="">동을 먼저 선택하세요</option>
+            </select>
+            <!-- Custom Middle School Input -->
+            <input type="text" id="customSchoolInput" placeholder="중학교 이름을 직접 입력하세요 (예: 한국중학교)" class="hidden mt-3 w-full px-4 py-3 rounded-xl border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium">
+          </div>
+        </div>
+
+        <div class="mt-8 flex justify-end">
+          <button onclick="validateAndNext(1)" class="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold rounded-xl shadow-md hover:shadow-lg hover:from-indigo-700 hover:to-violet-700 transition flex items-center justify-center gap-2">
+            다음 단계 <i class="fa-solid fa-arrow-right text-xs"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Gender & School Types -->
+      <div id="step2" class="step-card hidden bg-white p-6 sm:p-10 rounded-3xl border border-slate-200/80 shadow-md">
+        <div class="mb-8">
+          <span class="inline-block px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold mb-2">Step 2 / 4</span>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">성별 및 희망 고교 유형 선택</h2>
+          <p class="text-slate-500 text-sm mt-1">성별 및 진학을 고려 중인 고등학교 유형을 모두 선택해 주세요 (복수 선택 가능).</p>
+        </div>
+
+        <div class="space-y-8">
+          <!-- Gender Selection -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-3">학생 성별 <span class="text-rose-500">*</span></label>
+            <div class="grid grid-cols-2 gap-4">
+              <label class="relative flex flex-col items-center justify-center p-4 border-2 border-slate-200 rounded-2xl cursor-pointer hover:border-indigo-300 transition-all group label-checked:border-indigo-600 label-checked:bg-indigo-50/30">
+                <input type="radio" name="gender" value="male" class="sr-only" onchange="updateGenderStyle(this)" checked>
+                <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl mb-2 group-hover:scale-110 transition-transform">
+                  <i class="fa-solid fa-mars"></i>
+                </div>
+                <span class="font-bold text-slate-800">남학생</span>
+                <span class="text-xs text-slate-400 mt-1">남고 + 남녀공학 추천</span>
+              </label>
+
+              <label class="relative flex flex-col items-center justify-center p-4 border-2 border-slate-200 rounded-2xl cursor-pointer hover:border-indigo-300 transition-all group label-checked:border-indigo-600 label-checked:bg-indigo-50/30">
+                <input type="radio" name="gender" value="female" class="sr-only" onchange="updateGenderStyle(this)">
+                <div class="w-12 h-12 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center text-xl mb-2 group-hover:scale-110 transition-transform">
+                  <i class="fa-solid fa-venus"></i>
+                </div>
+                <span class="font-bold text-slate-800">여학생</span>
+                <span class="text-xs text-slate-400 mt-1">여고 + 남녀공학 추천</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- School Types Selection -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-3">관심 고등학교 유형 (다중 선택 가능) <span class="text-rose-500">*</span></label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              
+              <!-- 일반고 -->
+              <label class="type-checkbox-label flex items-start p-4 border-2 border-slate-200 rounded-2xl cursor-pointer hover:border-indigo-300 transition">
+                <input type="checkbox" value="일반고" class="mt-1 w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" checked>
+                <div class="ml-3">
+                  <span class="block font-bold text-slate-800 text-sm">일반고등학교</span>
+                  <span class="block text-xs text-slate-500 mt-0.5">교과 중심 균형 교육 및 수시/정시 다각화</span>
+                </div>
+              </label>
+
+              <!-- 자사고 -->
+              <label class="type-checkbox-label flex items-start p-4 border-2 border-slate-200 rounded-2xl cursor-pointer hover:border-indigo-300 transition">
+                <input type="checkbox" value="자사고" class="mt-1 w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" checked>
+                <div class="ml-3">
+                  <span class="block font-bold text-slate-800 text-sm">자율형사립고 (자사고)</span>
+                  <span class="block text-xs text-slate-500 mt-0.5">자율적 교육과정과 우수한 학업 분위기</span>
+                </div>
+              </label>
+
+              <!-- 특목고 -->
+              <label class="type-checkbox-label flex items-start p-4 border-2 border-slate-200 rounded-2xl cursor-pointer hover:border-indigo-300 transition">
+                <input type="checkbox" value="특목고" class="mt-1 w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" checked>
+                <div class="ml-3">
+                  <span class="block font-bold text-slate-800 text-sm">특수목적고 (외고/국제고/과학고)</span>
+                  <span class="block text-xs text-slate-500 mt-0.5">어학, 외국어, 이공계 심화 전문 교육</span>
+                </div>
+              </label>
+
+              <!-- 특성화고/마이스터고 -->
+              <label class="type-checkbox-label flex items-start p-4 border-2 border-slate-200 rounded-2xl cursor-pointer hover:border-indigo-300 transition">
+                <input type="checkbox" value="특성화고" class="mt-1 w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
+                <div class="ml-3">
+                  <span class="block font-bold text-slate-800 text-sm">특성화고 / 마이스터고</span>
+                  <span class="block text-xs text-slate-500 mt-0.5">취업 및 기술 실무 특화 진로 과정</span>
+                </div>
+              </label>
+
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-8 flex items-center justify-between">
+          <button onclick="goToStep(1)" class="px-6 py-3.5 border border-slate-200 text-slate-600 font-semibold rounded-xl hover:bg-slate-50 transition">
+            <i class="fa-solid fa-arrow-left text-xs mr-1"></i> 이전
+          </button>
+          <button onclick="validateAndNext(2)" class="px-8 py-3.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold rounded-xl shadow-md hover:shadow-lg hover:from-indigo-700 hover:to-violet-700 transition flex items-center gap-2">
+            다음 단계 <i class="fa-solid fa-arrow-right text-xs"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Academic Score -->
+      <div id="step3" class="step-card hidden bg-white p-6 sm:p-10 rounded-3xl border border-slate-200/80 shadow-md">
+        <div class="mb-8">
+          <span class="inline-block px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold mb-2">Step 3 / 4</span>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">현재 성적 수준 입력</h2>
+          <p class="text-slate-500 text-sm mt-1">내신 석차 백분위 또는 주요 과목 성적 수준을 입력해주세요.</p>
+        </div>
+
+        <div class="space-y-8">
+          <!-- Input Mode Tabs -->
+          <div class="flex rounded-xl bg-slate-100 p-1">
+            <button id="scoreModePercentBtn" onclick="setScoreMode('percent')" class="flex-1 py-2.5 rounded-lg text-xs font-bold transition bg-white text-indigo-600 shadow-sm">
+              내신 석차 백분위 (%)
+            </button>
+            <button id="scoreModeGradeBtn" onclick="setScoreMode('grade')" class="flex-1 py-2.5 rounded-lg text-xs font-bold text-slate-500 transition hover:text-slate-700">
+              주요 과목 성적등급 (A~E)
+            </button>
+          </div>
+
+          <!-- Mode 1: Percentage Input -->
+          <div id="percentModeContainer" class="space-y-6">
+            <div class="bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100 text-center">
+              <span class="text-xs font-bold text-indigo-500 uppercase tracking-wider block mb-1">나의 예상 내신 백분위</span>
+              <div class="text-4xl font-black text-indigo-600"><span id="percentValueDisplay">15</span>% <span class="text-sm font-semibold text-slate-500">(상위 15%)</span></div>
+            </div>
+            
+            <div>
+              <input type="range" id="percentRange" min="1" max="100" value="15" oninput="updatePercentValue(this.value)" class="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+              <div class="flex justify-between text-xs text-slate-400 font-semibold mt-2">
+                <span>상위 1% (최상위권)</span>
+                <span>상위 30%</span>
+                <span>상위 60%</span>
+                <span>100%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mode 2: Letter Grade Input -->
+          <div id="gradeModeContainer" class="hidden space-y-4">
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">국어 성적</label>
+                <select id="gradeKorean" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold">
+                  <option value="A">A (90점 이상)</option>
+                  <option value="B">B (80점 이상)</option>
+                  <option value="C">C (70점 이상)</option>
+                  <option value="D">D (60점 이상)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">수학 성적</label>
+                <select id="gradeMath" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold">
+                  <option value="A">A (90점 이상)</option>
+                  <option value="B">B (80점 이상)</option>
+                  <option value="C">C (70점 이상)</option>
+                  <option value="D">D (60점 이상)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">영어 성적</label>
+                <select id="gradeEnglish" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold">
+                  <option value="A">A (90점 이상)</option>
+                  <option value="B">B (80점 이상)</option>
+                  <option value="C">C (70점 이상)</option>
+                  <option value="D">D (60점 이상)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">과학 성적</label>
+                <select id="gradeScience" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold">
+                  <option value="A">A (90점 이상)</option>
+                  <option value="B">B (80점 이상)</option>
+                  <option value="C">C (70점 이상)</option>
+                  <option value="D">D (60점 이상)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">사회 성적</label>
+                <select id="gradeSocial" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold">
+                  <option value="A">A (90점 이상)</option>
+                  <option value="B">B (80점 이상)</option>
+                  <option value="C">C (70점 이상)</option>
+                  <option value="D">D (60점 이상)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="mt-8 flex items-center justify-between">
+          <button onclick="goToStep(2)" class="px-6 py-3.5 border border-slate-200 text-slate-600 font-semibold rounded-xl hover:bg-slate-50 transition">
+            <i class="fa-solid fa-arrow-left text-xs mr-1"></i> 이전
+          </button>
+          <button onclick="validateAndNext(3)" class="px-8 py-3.5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold rounded-xl shadow-md hover:shadow-lg hover:from-indigo-700 hover:to-violet-700 transition flex items-center gap-2">
+            다음 단계 <i class="fa-solid fa-arrow-right text-xs"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 4: Preferred Subjects & Final Ranking -->
+      <div id="step4" class="step-card hidden bg-white p-6 sm:p-10 rounded-3xl border border-slate-200/80 shadow-md">
+        <div class="mb-8">
+          <span class="inline-block px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold mb-2">Step 4 / 4</span>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">선호 과목 및 흥미 분야 선택</h2>
+          <p class="text-slate-500 text-sm mt-1">자신이 좋아하거나 흥미를 느끼는 과목을 선택해주세요 (최대 3개).</p>
+        </div>
+
+        <div class="space-y-6">
+          <div id="subjectGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <!-- Subject Badges dynamically rendered or hardcoded -->
+            <button type="button" onclick="toggleSubject('수학', this)" class="subject-btn p-4 rounded-2xl border-2 border-slate-200 text-slate-700 font-bold text-center hover:border-indigo-300 transition flex flex-col items-center gap-2">
+              <i class="fa-solid fa-calculator text-2xl text-indigo-500"></i>
+              <span class="text-sm">수학</span>
+            </button>
+            <button type="button" onclick="toggleSubject('과학', this)" class="subject-btn p-4 rounded-2xl border-2 border-slate-200 text-slate-700 font-bold text-center hover:border-indigo-300 transition flex flex-col items-center gap-2">
+              <i class="fa-solid fa-flask text-2xl text-emerald-500"></i>
+              <span class="text-sm">과학</span>
+            </button>
+            <button type="button" onclick="toggleSubject('영어', this)" class="subject-btn p-4 rounded-2xl border-2 border-slate-200 text-slate-700 font-bold text-center hover:border-indigo-300 transition flex flex-col items-center gap-2">
+              <i class="fa-solid fa-language text-2xl text-sky-500"></i>
+              <span class="text-sm">영어</span>
+            </button>
+            <button type="button" onclick="toggleSubject('국어/인문', this)" class="subject-btn p-4 rounded-2xl border-2 border-slate-200 text-slate-700 font-bold text-center hover:border-indigo-300 transition flex flex-col items-center gap-2">
+              <i class="fa-solid fa-book-open text-2xl text-amber-500"></i>
+              <span class="text-sm">국어 / 인문</span>
+            </button>
+            <button type="button" onclick="toggleSubject('사회/경영', this)" class="subject-btn p-4 rounded-2xl border-2 border-slate-200 text-slate-700 font-bold text-center hover:border-indigo-300 transition flex flex-col items-center gap-2">
+              <i class="fa-solid fa-chart-line text-2xl text-purple-500"></i>
+              <span class="text-sm">사회 / 경영</span>
+            </button>
+            <button type="button" onclick="toggleSubject('SW/정보', this)" class="subject-btn p-4 rounded-2xl border-2 border-slate-200 text-slate-700 font-bold text-center hover:border-indigo-300 transition flex flex-col items-center gap-2">
+              <i class="fa-solid fa-laptop-code text-2xl text-indigo-600"></i>
+              <span class="text-sm">SW / 정보공학</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-8 flex items-center justify-between">
+          <button onclick="goToStep(3)" class="px-6 py-3.5 border border-slate-200 text-slate-600 font-semibold rounded-xl hover:bg-slate-50 transition">
+            <i class="fa-solid fa-arrow-left text-xs mr-1"></i> 이전
+          </button>
+          <button onclick="calculateAndShowResults()" class="px-8 py-3.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:opacity-95 transition flex items-center gap-2">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> 최종 맞춤 고교 추천받기
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Recommendation Dashboard View (Hidden by default) -->
+    <div id="resultsDashboard" class="hidden flex-1 space-y-8">
+      
+      <!-- User Summary Banner -->
+      <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+        <div class="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl"></div>
+        
+        <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div>
+            <div class="flex items-center gap-2 text-indigo-300 text-xs font-bold tracking-wider uppercase mb-2">
+              <i class="fa-solid fa-bullseye"></i> AI 맞춤 분석 완료
+            </div>
+            <h2 class="text-2xl sm:text-3xl font-black"><span id="userSummarySchool" class="text-indigo-400">OO중학교</span> 학생을 위한 최종 추천 리스트</h2>
+            <p class="text-slate-300 text-sm mt-1" id="userSummaryDetail">서울 강남구 대치동 기준 | 남학생 | 내신 상위 15% | 선호: 수학, 과학</p>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button onclick="resetApp()" class="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-xl backdrop-blur-md transition flex items-center gap-1.5 border border-white/10">
+              <i class="fa-solid fa-sliders"></i> 조건 수정하기
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filters & Sorting Bar -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div class="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+          <button onclick="filterResults('all')" class="filter-tab-btn active px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow-sm transition whitespace-nowrap">전체 보기</button>
+          <button onclick="filterResults('일반고')" class="filter-tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap">일반고</button>
+          <button onclick="filterResults('자사고')" class="filter-tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap">자사고</button>
+          <button onclick="filterResults('특목고')" class="filter-tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap">특목고</button>
+          <button onclick="filterResults('특성화고')" class="filter-tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap">특성화고</button>
+        </div>
+
+        <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+          <label class="text-xs font-bold text-slate-500 whitespace-nowrap">정렬:</label>
+          <select id="sortSelect" onchange="sortResults(this.value)" class="text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none">
+            <option value="match">종합 적합도순</option>
+            <option value="distance">가까운 거리/통학시간순</option>
+            <option value="academic">학업 분위기/진학률순</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- School Cards Grid -->
+      <div id="schoolListGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Cards dynamically injected by JS -->
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Footer Footer -->
+  <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-400">
+    <p>© 2026 마이 스쿨 (My School). 전국 고등학교 맞춤 진학 가이드</p>
+  </footer>
+
+  <!-- School Detail Modal -->
+  <div id="schoolDetailModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-fade-in">
+      
+      <!-- Modal Header -->
+      <div class="p-6 border-b border-slate-100 flex items-start justify-between bg-slate-50/50">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span id="modalSchoolBadge" class="px-2.5 py-0.5 rounded-md text-[11px] font-extrabold bg-indigo-100 text-indigo-700">일반고</span>
+            <span id="modalGenderBadge" class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-200 text-slate-600">남녀공학</span>
+          </div>
+          <h3 id="modalSchoolName" class="text-2xl font-black text-slate-900">학교 이름</h3>
+          <p id="modalSchoolAddress" class="text-xs text-slate-500 mt-1"><i class="fa-solid fa-location-dot text-rose-500"></i> 서울 강남구</p>
+        </div>
+        <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-200/60 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="p-6 overflow-y-auto custom-scrollbar space-y-6">
+        <!-- Match Stats -->
+        <div class="grid grid-cols-3 gap-3 bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/80 text-center">
+          <div>
+            <span class="text-[11px] font-bold text-slate-400 block">종합 적합도</span>
+            <span id="modalMatchScore" class="text-xl font-black text-indigo-600">95%</span>
+          </div>
+          <div>
+            <span class="text-[11px] font-bold text-slate-400 block">예상 통학 시간</span>
+            <span id="modalCommuteTime" class="text-xl font-black text-slate-800">12분</span>
+          </div>
+          <div>
+            <span class="text-[11px] font-bold text-slate-400 block">권장 내신 백분위</span>
+            <span id="modalTargetGrade" class="text-xl font-black text-slate-800">상위 20% 이내</span>
+          </div>
+        </div>
+
+        <!-- Commute & Route Detail -->
+        <div>
+          <h4 class="text-sm font-extrabold text-slate-800 mb-2 flex items-center gap-1.5"><i class="fa-solid fa-bus text-indigo-500"></i> 통학 여건 및 경로</h4>
+          <p id="modalCommuteDetail" class="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl">현재 중학교에서 버스 이용 시 약 15분 소요 (직행 노선 보유)</p>
+        </div>
+
+        <!-- School Features & Key Strengths -->
+        <div>
+          <h4 class="text-sm font-extrabold text-slate-800 mb-2 flex items-center gap-1.5"><i class="fa-solid fa-star text-amber-500"></i> 주요 학교 특장점 및 분위기</h4>
+          <ul id="modalFeaturesList" class="space-y-2 text-xs text-slate-600">
+            <!-- Dynamic bullets -->
+          </ul>
+        </div>
+
+        <!-- Career & University Results -->
+        <div>
+          <h4 class="text-sm font-extrabold text-slate-800 mb-2 flex items-center gap-1.5"><i class="fa-solid fa-graduation-cap text-indigo-600"></i> 주요 진학/진로 성과</h4>
+          <div id="modalCareerInfo" class="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
+            의치한약수 및 주요 10개 대학 진학률 우수, 이공계열 심화반 운영
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+        <button id="modalBookmarkBtn" onclick="toggleModalBookmark()" class="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-100 transition flex items-center gap-1.5">
+          <i class="fa-regular fa-bookmark"></i> 북마크 저장
+        </button>
+        <button onclick="closeModal()" class="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition">
+          확인
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Bookmarks Modal -->
+  <div id="bookmarksModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full max-h-[80vh] flex flex-col overflow-hidden shadow-2xl">
+      <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="text-xl font-black text-slate-900 flex items-center gap-2"><i class="fa-solid fa-bookmark text-indigo-600"></i> 보관한 고등학교</h3>
+        <button onclick="toggleBookmarksModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="bookmarksList" class="p-6 overflow-y-auto custom-scrollbar space-y-3 flex-1">
+        <!-- Bookmark Items -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Logic JS Script -->
+  <script>
+    /* ==========================================================================
+       1. DATA STRUCTURE (Expanded Location & School Data)
+       ========================================================================== */
+    const LOCATION_DATA = {
+      "서울특별시": {
+        "강남구": {
+          "대치동": ["구룡중학교", "대청중학교", "대치중학교", "단국대부속중학교"],
+          "역삼동": ["역삼중학교", "진선여자중학교"],
+          "개포동": ["개원중학교", "개포중학교"],
+          "압구정동": ["신구중학교", "압구정중학교"]
+        },
+        "서초구": {
+          "반포동": ["반포중학교", "신반포중학교", "세화여자중학교"],
+          "방배동": ["방배중학교", "서초중학교"]
+        },
+        "송파구": {
+          "잠실동": ["잠실중학교", "신천중학교", "아주중학교"],
+          "방이동": ["방이중학교", "오륜중학교"]
+        },
+        "양천구": {
+          "목동": ["목동중학교", "목운중학교", "목일중학교", "신목중학교"]
+        },
+        "노원구": {
+          "중계동": ["불암중학교", "중계중학교", "신상중학교"]
+        }
+      },
+      "경기도": {
+        "성남시 분당구": {
+          "수내동": ["수내중학교", "내정중학교"],
+          "서현동": ["서현중학교"],
+          "정자동": ["정자중학교", "백현중학교"]
+        },
+        "고양시 일산서구": {
+          "주엽동": ["발산중학교", "오마중학교"],
+          "대화동": ["대화중학교"]
+        },
+        "수원시 영통구": {
+          "영통동": ["영통중학교", "영덕중학교"],
+          "광교동": ["광교중학교"]
+        }
+      },
+      "인천광역시": {
+        "연수구": {
+          "송도동": ["신송중학교", "해송중학교", "박문중학교"]
+        }
+      },
+      "부산광역시": {
+        "해운대구": {
+          "우동": ["해운대중학교", "해운대여자중학교"],
+          "좌동": ["신곡중학교", "부흥중학교"]
+        }
+      }
+    };
+
+    // Master High School Database with Gender Target Filter Included
+    const HIGH_SCHOOL_DB = [
+      // 서울 강남권
+      {
+        id: "s1",
+        name: "휘문고등학교",
+        sido: "서울특별시",
+        sigungu: "강남구",
+        dong: "대치동",
+        type: "자사고",
+        genderType: "male", // 남고
+        genderText: "남고",
+        minPercentile: 25,
+        strongSubjects: ["수학", "과학"],
+        commuteTimes: { "구룡중학교": "도보 10분", "대청중학교": "대중교통 12분", "대치중학교": "도보 8분", "default": "대중교통 15분" },
+        features: ["의치한약수 최상위 진학률", "이공계/의학계열 특화 자사고", "자율적 학습 분위기 조성"],
+        careerInfo: "전국 최상위 의학계열 및 서울대 합격자 배출"
+      },
+      {
+        id: "s2",
+        name: "진선여자고등학교",
+        sido: "서울특별시",
+        sigungu: "강남구",
+        dong: "역삼동",
+        type: "일반고",
+        genderType: "female", // 여고
+        genderText: "여고",
+        minPercentile: 20,
+        strongSubjects: ["국어/인문", "영어", "수학"],
+        commuteTimes: { "진선여자중학교": "도보 3분", "역삼중학교": "도보 10분", "default": "대중교통 15분" },
+        features: ["우수한 수시 학종 관리 프로그램", "내신 경쟁 치열하나 최상위 대학 진학률 탁월", "쾌적한 교정 환경"],
+        careerInfo: "서울 주요 10개 대학 및 수시 모범 진학 학교"
+      },
+      {
+        id: "s3",
+        name: "단국대학교사범대학부속고등학교",
+        sido: "서울특별시",
+        sigungu: "강남구",
+        dong: "대치동",
+        type: "일반고",
+        genderType: "male", // 남고
+        genderText: "남고",
+        minPercentile: 22,
+        strongSubjects: ["수학", "과학", "SW/정보"],
+        commuteTimes: { "단국대부속중학교": "도보 2분", "대치중학교": "도보 12분", "default": "대중교통 15분" },
+        features: ["강남 지역 최고 수준의 수학/과학 교육과정", "정시/수시 균형 잡힌 진학 성과", "활발한 동아리 활동"],
+        careerInfo: "서울대 및 주요 대학 공학/이과계열 합격 다수"
+      },
+      {
+        id: "s4",
+        name: "경기고등학교",
+        sido: "서울특별시",
+        sigungu: "강남구",
+        dong: "삼성동",
+        type: "일반고",
+        genderType: "male", // 남고
+        genderText: "남고",
+        minPercentile: 30,
+        strongSubjects: ["사회/경영", "국어/인문", "수학"],
+        commuteTimes: { "default": "대중교통 20분" },
+        features: ["깊은 역사와 동문 네트워크", "넓은 교정과 자율적인 학교 문화", "다양한 동아리 활동"],
+        careerInfo: "인문/자연계열 균형 잡힌 명문 대학 진학률"
+      },
+      {
+        id: "s5",
+        name: "서울과학고등학교",
+        sido: "서울특별시",
+        sigungu: "종로구",
+        dong: "혜화동",
+        type: "특목고",
+        genderType: "coed", // 공학
+        genderText: "남녀공학",
+        minPercentile: 3,
+        strongSubjects: ["수학", "과학", "SW/정보"],
+        commuteTimes: { "default": "대중교통 40분" },
+        features: ["전국 최상위 영재 과학고", "R&E 학술 연구 특화", "최첨단 실험실 및 연구 장비 보유"],
+        careerInfo: "서울대, KAIST, 포스텍 및 해외 명문대 진학"
+      },
+      {
+        id: "s6",
+        name: "대원외국어고등학교",
+        sido: "서울특별시",
+        sigungu: "광진구",
+        dong: "중곡동",
+        type: "특목고",
+        genderType: "coed", // 공학
+        genderText: "남녀공학",
+        minPercentile: 8,
+        strongSubjects: ["영어", "국어/인문", "사회/경영"],
+        commuteTimes: { "default": "대중교통 35분" },
+        features: ["대한민국 최고 명문 외고", "글로벌 어학 심화 교육", "인문/사회계열 독보적 진학 실적"],
+        careerInfo: "서울대 인문계열 및 해외 Ivy League 대거 합격"
+      },
+      {
+        id: "s7",
+        name: "하나고등학교",
+        sido: "서울특별시",
+        sigungu: "은평구",
+        dong: "진관동",
+        type: "자사고",
+        genderType: "coed", // 공학
+        genderText: "남녀공학",
+        minPercentile: 5,
+        strongSubjects: ["수학", "영어", "사회/경영", "과학"],
+        commuteTimes: { "default": "대중교통 45분 (기숙사)" },
+        features: ["전국 단위 모집 기숙사형 자사고", "1인 2기 체육/예술 프로그램", "수시 학생부종합전형 최강자"],
+        careerInfo: "서울대 수시 합격자 전국 최상위권"
+      },
+      {
+        id: "s8",
+        name: "세화고등학교",
+        sido: "서울특별시",
+        sigungu: "서초구",
+        dong: "반포동",
+        type: "자사고",
+        genderType: "male", // 남고
+        genderText: "남고",
+        minPercentile: 20,
+        strongSubjects: ["수학", "과학"],
+        commuteTimes: { "반포중학교": "도보 5분", "신반포중학교": "도보 7분", "default": "대중교통 15분" },
+        features: ["서초 반포 대표 자사고", "체계적인 면학 분위기와 수능 대비", "학업 성취도 최상위"],
+        careerInfo: "의학계열 및 주요 상위권 대학 정시 strong"
+      },
+      {
+        id: "s9",
+        name: "세화여자고등학교",
+        sido: "서울특별시",
+        sigungu: "서초구",
+        dong: "반포동",
+        type: "자사고",
+        genderType: "female", // 여고
+        genderText: "여고",
+        minPercentile: 18,
+        strongSubjects: ["국어/인문", "영어", "수학"],
+        commuteTimes: { "세화여자중학교": "도보 1분", "반포중학교": "도보 6분", "default": "대중교통 15분" },
+        features: ["강남서초 여고 선호도 1위", "높은 진학열과 수시/정시 맞춤형 트랙", "동아리 활동 다양"],
+        careerInfo: "서울 주요대 및 의약학계열 다수 합격"
+      },
+      {
+        id: "s10",
+        name: "낙생고등학교",
+        sido: "경기도",
+        sigungu: "성남시 분당구",
+        dong: "판교동",
+        type: "일반고",
+        genderType: "coed", // 공학
+        genderText: "남녀공학",
+        minPercentile: 15,
+        strongSubjects: ["수학", "과학", "SW/정보"],
+        commuteTimes: { "수내중학교": "대중교통 20분", "default": "대중교통 25분" },
+        features: ["분당 지역 최강의 학업 성취도", "정시 수능 준비 최적화", "이공계열 특화 중점"],
+        careerInfo: "일반고 중 서울대 및 의학계열 진학 전국 최상위"
+      },
+      {
+        id: "s11",
+        name: "외대부고 (용인한국외대부고)",
+        sido: "경기도",
+        sigungu: "용인시 처인구",
+        dong: "모현읍",
+        type: "자사고",
+        genderType: "coed", // 공학
+        genderText: "남녀공학",
+        minPercentile: 3,
+        strongSubjects: ["영어", "수학", "사회/경영", "과학"],
+        commuteTimes: { "default": "기숙사 생활" },
+        features: ["전국 명실상부 1위 자사고", "자연/인문/국제 트랙별 최고 교육과정", "전원 기숙사 시스템"],
+        careerInfo: "서울대, 의치한, 해외 명문대 독보적 진학"
+      },
+      {
+        id: "s12",
+        name: "선린인터넷고등학교",
+        sido: "서울특별시",
+        sigungu: "용산구",
+        dong: "청파동",
+        type: "특성화고",
+        genderType: "coed", // 공학
+        genderText: "남녀공학",
+        minPercentile: 35,
+        strongSubjects: ["SW/정보"],
+        commuteTimes: { "default": "대중교통 30분" },
+        features: ["IT/소프트웨어 분야 최고의 특성화고", "해킹, 프로그래밍, 정보보안 전문 교육", "창업 및 특기자 전형 대학 진학 우수"],
+        careerInfo: "네이버/카카오 등 IT 기업 취업 및 주요대 소프트웨어특기자 합격"
+      }
     ];
 
-    let currentStage = 0;
-    let timer = 0;
-    let timerId = null;
-    let teacherState = 'writing'; // 'writing', 'warning', 'looking'
-    let teacherLoopId = null;
+    /* ==========================================================================
+       2. STATE MANAGEMENT
+       ========================================================================== */
+    let currentState = {
+      step: 1,
+      sido: "",
+      sigungu: "",
+      dong: "",
+      middleSchool: "",
+      gender: "male", // 'male' or 'female'
+      schoolTypes: ["일반고", "자사고", "특목고"],
+      scoreMode: "percent", // 'percent' or 'grade'
+      percentile: 15,
+      grades: { Korean: 'A', Math: 'A', English: 'A', Science: 'A', Social: 'A' },
+      preferredSubjects: [],
+      bookmarks: []
+    };
 
-    let playerPos = { r: 0, c: 0 };
-    let targetPos = { r: 3, c: 3 };
-    let gridData = [];
+    let filteredRecommendations = [];
 
-    // DOM 요소
-    const gridEl = document.getElementById('grid');
-    const teacherEl = document.getElementById('teacher-avatar');
-    const bubbleEl = document.getElementById('status-bubble');
-    const blackboardEl = document.getElementById('blackboard-text');
-    const alertStatusEl = document.getElementById('alert-status');
-    const timerEl = document.getElementById('timer');
-    const stageNumEl = document.getElementById('stage-num');
+    /* ==========================================================================
+       3. INITIALIZATION & DROPDOWN EVENTS
+       ========================================================================== */
+    document.addEventListener("DOMContentLoaded", () => {
+      initSidoDropdown();
+      updateStepUI();
+    });
 
-    // 이벤트 리스너 (키보드 조작)
-    document.addEventListener('keydown', handleKeyDown);
+    function initSidoDropdown() {
+      const sidoSelect = document.getElementById("sidoSelect");
+      sidoSelect.innerHTML = `<option value="">시/도를 선택하세요</option>`;
+      Object.keys(LOCATION_DATA).forEach(sido => {
+        const opt = document.createElement("option");
+        opt.value = sido;
+        opt.textContent = sido;
+        sidoSelect.appendChild(opt);
+      });
+    }
 
-    function initGrid() {
-        gridData = [];
-        let emojiIdx = 0;
+    function handleSidoChange() {
+      const sidoSelect = document.getElementById("sidoSelect");
+      const sigunguSelect = document.getElementById("sigunguSelect");
+      const dongSelect = document.getElementById("dongSelect");
+      const middleSelect = document.getElementById("middleSchoolSelect");
 
-        for (let r = 0; r < ROWS; r++) {
-            gridData[r] = [];
-            for (let c = 0; c < COLS; c++) {
-                if (r === playerPos.r && c === playerPos.c) {
-                    gridData[r][c] = { isPlayer: true, emoji: '🥷', name: '나' };
-                } else {
-                    const randomEmoji = STUDENT_EMOJIS[emojiIdx % STUDENT_EMOJIS.length];
-                    emojiIdx++;
-                    gridData[r][c] = { isPlayer: false, emoji: randomEmoji, name: `친구${emojiIdx}` };
-                }
-            }
+      currentState.sido = sidoSelect.value;
+      
+      // Reset subsequent selects
+      sigunguSelect.innerHTML = `<option value="">시/군/구를 선택하세요</option>`;
+      dongSelect.innerHTML = `<option value="">구/시를 먼저 선택하세요</option>`;
+      middleSelect.innerHTML = `<option value="">동을 먼저 선택하세요</option>`;
+      sigunguSelect.disabled = true;
+      dongSelect.disabled = true;
+      middleSelect.disabled = true;
+      hideCustomInputs();
+
+      if (!currentState.sido) return;
+
+      const sigungus = Object.keys(LOCATION_DATA[currentState.sido] || {});
+      sigungus.forEach(sg => {
+        const opt = document.createElement("option");
+        opt.value = sg;
+        opt.textContent = sg;
+        sigunguSelect.appendChild(opt);
+      });
+      sigunguSelect.disabled = false;
+    }
+
+    function handleSigunguChange() {
+      const sigunguSelect = document.getElementById("sigunguSelect");
+      const dongSelect = document.getElementById("dongSelect");
+      const middleSelect = document.getElementById("middleSchoolSelect");
+
+      currentState.sigungu = sigunguSelect.value;
+
+      dongSelect.innerHTML = `<option value="">읍/면/동을 선택하세요</option>`;
+      middleSelect.innerHTML = `<option value="">동을 먼저 선택하세요</option>`;
+      dongSelect.disabled = true;
+      middleSelect.disabled = true;
+      hideCustomInputs();
+
+      if (!currentState.sigungu) return;
+
+      const dongs = Object.keys(LOCATION_DATA[currentState.sido][currentState.sigungu] || {});
+      dongs.forEach(d => {
+        const opt = document.createElement("option");
+        opt.value = d;
+        opt.textContent = d;
+        dongSelect.appendChild(opt);
+      });
+
+      // Add Custom Option
+      const customOpt = document.createElement("option");
+      customOpt.value = "CUSTOM";
+      customOpt.textContent = "✏️ 직접 입력하기";
+      dongSelect.appendChild(customOpt);
+
+      dongSelect.disabled = false;
+    }
+
+    function handleDongChange() {
+      const dongSelect = document.getElementById("dongSelect");
+      const customDongInput = document.getElementById("customDongInput");
+      const middleSelect = document.getElementById("middleSchoolSelect");
+
+      if (dongSelect.value === "CUSTOM") {
+        customDongInput.classList.remove("hidden");
+        currentState.dong = "";
+      } else {
+        customDongInput.classList.add("hidden");
+        currentState.dong = dongSelect.value;
+      }
+
+      middleSelect.innerHTML = `<option value="">중학교를 선택하세요</option>`;
+      middleSelect.disabled = true;
+
+      if (!dongSelect.value) return;
+
+      if (dongSelect.value !== "CUSTOM") {
+        const schools = LOCATION_DATA[currentState.sido][currentState.sigungu][currentState.dong] || [];
+        schools.forEach(sch => {
+          const opt = document.createElement("option");
+          opt.value = sch;
+          opt.textContent = sch;
+          middleSelect.appendChild(opt);
+        });
+      }
+
+      // Add Custom Option for School
+      const customSchoolOpt = document.createElement("option");
+      customSchoolOpt.value = "CUSTOM";
+      customSchoolOpt.textContent = "✏️ 기타 중학교 직접 입력";
+      middleSelect.appendChild(customSchoolOpt);
+
+      middleSelect.disabled = false;
+    }
+
+    function handleMiddleSchoolChange() {
+      const middleSelect = document.getElementById("middleSchoolSelect");
+      const customSchoolInput = document.getElementById("customSchoolInput");
+
+      if (middleSelect.value === "CUSTOM") {
+        customSchoolInput.classList.remove("hidden");
+        currentState.middleSchool = "";
+      } else {
+        customSchoolInput.classList.add("hidden");
+        currentState.middleSchool = middleSelect.value;
+      }
+    }
+
+    function hideCustomInputs() {
+      document.getElementById("customDongInput").classList.add("hidden");
+      document.getElementById("customSchoolInput").classList.add("hidden");
+    }
+
+    /* ==========================================================================
+       4. NAVIGATION & WIZARD STEPS
+       ========================================================================== */
+    function goToStep(stepNumber) {
+      if (stepNumber > currentState.step && !validateCurrentStep(currentState.step)) return;
+      
+      currentState.step = stepNumber;
+      updateStepUI();
+    }
+
+    function validateAndNext(currentStepNum) {
+      if (validateCurrentStep(currentStepNum)) {
+        currentState.step = currentStepNum + 1;
+        updateStepUI();
+      }
+    }
+
+    function validateCurrentStep(step) {
+      if (step === 1) {
+        const sido = document.getElementById("sidoSelect").value;
+        const sigungu = document.getElementById("sigunguSelect").value;
+        const dongSelect = document.getElementById("dongSelect").value;
+        const dongInput = document.getElementById("customDongInput").value.trim();
+        const schoolSelect = document.getElementById("middleSchoolSelect").value;
+        const schoolInput = document.getElementById("customSchoolInput").value.trim();
+
+        const finalDong = dongSelect === "CUSTOM" ? dongInput : dongSelect;
+        const finalSchool = schoolSelect === "CUSTOM" ? schoolInput : schoolSelect;
+
+        if (!sido || !sigungu || !finalDong || !finalSchool) {
+          alert("지역(시/도, 시/군/구, 동)과 재학 중인 중학교를 올바르게 입력해주세요.");
+          return false;
         }
-    }
 
-    function renderGrid() {
-        gridEl.innerHTML = '';
-        for (let r = 0; r < ROWS; r++) {
-            for (let c = 0; c < COLS; c++) {
-                const seat = document.createElement('div');
-                seat.className = 'seat';
-                
-                const cell = gridData[r][c];
+        currentState.sido = sido;
+        currentState.sigungu = sigungu;
+        currentState.dong = finalDong;
+        currentState.middleSchool = finalSchool;
+        return true;
+      }
 
-                if (r === targetPos.r && c === targetPos.c) {
-                    seat.classList.add('target');
-                }
+      if (step === 2) {
+        const genderVal = document.querySelector('input[name="gender"]:checked').value;
+        const checkedTypes = Array.from(document.querySelectorAll('.type-checkbox-label input:checked')).map(cb => cb.value);
 
-                if (cell.isPlayer) {
-                    seat.classList.add('player-seat');
-                }
-
-                // 이동 가능한 위치 강조 표시
-                if (isAdjacent(playerPos, {r, c})) {
-                    seat.classList.add('swappable');
-                }
-
-                seat.onclick = () => trySwap(r, c);
-
-                const avatar = document.createElement('div');
-                avatar.className = 'student-avatar';
-                avatar.textContent = cell.emoji;
-
-                const name = document.createElement('div');
-                name.className = 'student-name';
-                name.textContent = cell.name;
-
-                seat.appendChild(avatar);
-                seat.appendChild(name);
-                gridEl.appendChild(seat);
-            }
-        }
-    }
-
-    function isAdjacent(pos1, pos2) {
-        const rowDiff = Math.abs(pos1.r - pos2.r);
-        const colDiff = Math.abs(pos1.c - pos2.c);
-        return (rowDiff + colDiff) === 1;
-    }
-
-    function handleKeyDown(e) {
-        if (document.querySelector('.overlay:not(.hidden)')) return;
-
-        let targetR = playerPos.r;
-        let targetC = playerPos.c;
-
-        if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') targetR--;
-        else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') targetR++;
-        else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') targetC--;
-        else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') targetC++;
-        else return;
-
-        if (targetR >= 0 && targetR < ROWS && targetC >= 0 && targetC < COLS) {
-            trySwap(targetR, targetC);
-        }
-    }
-
-    function trySwap(r, c) {
-        if (!isAdjacent(playerPos, {r, c})) return;
-
-        // 플레이어가 감시 중에 자리를 바꾸면 걸림!
-        if (teacherState === 'looking') {
-            playSound('caught');
-            gameOver('선생님이 뒤돌아볼 때 자리를 바꾸다가 들켰습니다!');
-            return;
+        if (checkedTypes.length === 0) {
+          alert("최소 1개 이상의 관심 고등학교 유형을 선택해주세요.");
+          return false;
         }
 
-        playSound('move');
+        currentState.gender = genderVal;
+        currentState.schoolTypes = checkedTypes;
+        return true;
+      }
 
-        // 자리 교환 코드
-        const temp = gridData[playerPos.r][playerPos.c];
-        gridData[playerPos.r][playerPos.c] = gridData[r][c];
-        gridData[r][c] = temp;
+      if (step === 3) {
+        return true;
+      }
 
-        playerPos = { r, c };
-        renderGrid();
-
-        // 클리어 체크
-        if (playerPos.r === targetPos.r && playerPos.c === targetPos.c) {
-            stageClear();
-        }
+      return true;
     }
 
-    // 선생님 행동 패턴 루프
-    function scheduleTeacherAction() {
-        const config = STAGE_CONFIG[currentStage];
-        const waitTime = Math.random() * (config.lookIntervalMax - config.lookIntervalMin) + config.lookIntervalMin;
+    function updateStepUI() {
+      // Step ProgressBar
+      const progressPercent = ((currentState.step - 1) / 3) * 100;
+      document.getElementById("stepActiveBar").style.width = `${progressPercent}%`;
 
-        teacherLoopId = setTimeout(() => {
-            // 경고 단계
-            teacherState = 'warning';
-            alertStatusEl.textContent = '⚠️ 주의!';
-            alertStatusEl.style.color = '#ff9f43';
-            bubbleEl.style.display = 'block';
-            playSound('warn');
+      // Cards visibility
+      for (let i = 1; i <= 4; i++) {
+        const card = document.getElementById(`step${i}`);
+        const circle = document.getElementById(`stepCircle${i}`);
+        const text = document.getElementById(`stepText${i}`);
 
-            // 뒤돌아보기 단계 전환
-            teacherLoopId = setTimeout(() => {
-                teacherState = 'looking';
-                teacherEl.classList.add('looking-back');
-                teacherEl.textContent = '👀';
-                alertStatusEl.textContent = '👀 감시 중!';
-                alertStatusEl.style.color = '#ee5253';
-                bubbleEl.style.display = 'none';
-
-                // 다시 칠판보기로 원복
-                teacherLoopId = setTimeout(() => {
-                    teacherState = 'writing';
-                    teacherEl.classList.remove('looking-back');
-                    teacherEl.textContent = TEACHER_EMOJIS[currentStage];
-                    alertStatusEl.textContent = '안전';
-                    alertStatusEl.style.color = '#10ac84';
-
-                    scheduleTeacherAction();
-                }, config.lookDuration);
-
-            }, config.warnDuration);
-
-        }, waitTime);
-    }
-
-    function startGame() {
-        document.getElementById('start-overlay').classList.add('hidden');
-        document.getElementById('gameover-overlay').classList.add('hidden');
-        document.getElementById('stage-clear-overlay').classList.add('hidden');
-        document.getElementById('victory-overlay').classList.add('hidden');
-
-        playerPos = { r: 0, c: 0 };
-        targetPos = { r: 3, c: 3 };
-        
-        const config = STAGE_CONFIG[currentStage];
-        timer = config.time;
-        timerEl.textContent = timer;
-        stageNumEl.textContent = currentStage + 1;
-        teacherEl.textContent = TEACHER_EMOJIS[currentStage];
-
-        const blackboardSubjects = [
-            "수학: 함수와 그래프 (칠판 판서 중...)",
-            "영어: Reading Chapter 4 (단어 암기)",
-            "사회: 현대 사회와 시민 (정리 중...)"
-        ];
-        blackboardEl.textContent = blackboardSubjects[currentStage];
-
-        initGrid();
-        renderGrid();
-
-        // 타이머 시작
-        clearInterval(timerId);
-        timerId = setInterval(() => {
-            timer--;
-            timerEl.textContent = timer;
-            if (timer <= 0) {
-                clearInterval(timerId);
-                gameOver('시간이 다 되었습니다! 다음 교시 종이 울렸습니다.');
-            }
-        }, 1000);
-
-        // 선생님 패턴 루프 시작
-        clearTimeout(teacherLoopId);
-        teacherState = 'writing';
-        scheduleTeacherAction();
-    }
-
-    function gameOver(reason) {
-        clearInterval(timerId);
-        clearTimeout(teacherLoopId);
-        document.getElementById('fail-reason').textContent = reason;
-        document.getElementById('gameover-overlay').classList.remove('hidden');
-    }
-
-    function stageClear() {
-        clearInterval(timerId);
-        clearTimeout(teacherLoopId);
-        playSound('win');
-
-        if (currentStage < STAGE_CONFIG.length - 1) {
-            document.getElementById('clear-msg').textContent = `${STAGE_CONFIG[currentStage].teacherName}의 감시를 완전히 따돌렸습니다!`;
-            document.getElementById('stage-clear-overlay').classList.remove('hidden');
+        if (i === currentState.step) {
+          card.classList.remove("hidden");
+          circle.className = "w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm shadow-md ring-4 ring-indigo-50 transition-all duration-300";
+          text.className = "text-xs font-bold text-indigo-600 whitespace-nowrap";
+        } else if (i < currentState.step) {
+          card.classList.add("hidden");
+          circle.className = "w-10 h-10 rounded-full bg-emerald-500 text-white font-bold flex items-center justify-center text-sm transition-all duration-300";
+          circle.innerHTML = `<i class="fa-solid fa-check"></i>`;
+          text.className = "text-xs font-semibold text-slate-600 whitespace-nowrap";
         } else {
-            document.getElementById('victory-overlay').classList.remove('hidden');
+          card.classList.add("hidden");
+          circle.className = "w-10 h-10 rounded-full bg-slate-100 text-slate-400 font-bold flex items-center justify-center text-sm transition-all duration-300";
+          circle.innerText = i;
+          text.className = "text-xs font-semibold text-slate-400 whitespace-nowrap";
         }
+      }
+
+      document.getElementById("resultsDashboard").classList.add("hidden");
+      document.getElementById("wizardContainer").classList.remove("hidden");
+      document.getElementById("stepBarContainer").classList.remove("hidden");
     }
 
-    function nextStage() {
-        currentStage++;
-        startGame();
+    function updateGenderStyle(radioElem) {
+      document.querySelectorAll('input[name="gender"]').forEach(input => {
+        const label = input.closest('label');
+        if (input.checked) {
+          label.classList.add('border-indigo-600', 'bg-indigo-50/30');
+          label.classList.remove('border-slate-200');
+        } else {
+          label.classList.remove('border-indigo-600', 'bg-indigo-50/30');
+          label.classList.add('border-slate-200');
+        }
+      });
     }
 
-    function restartGame() {
-        currentStage = 0;
-        startGame();
+    /* ==========================================================================
+       5. ACADEMIC & SUBJECT INPUT HELPERS
+       ========================================================================== */
+    function setScoreMode(mode) {
+      currentState.scoreMode = mode;
+      const percentBtn = document.getElementById("scoreModePercentBtn");
+      const gradeBtn = document.getElementById("scoreModeGradeBtn");
+      const percentContainer = document.getElementById("percentModeContainer");
+      const gradeContainer = document.getElementById("gradeModeContainer");
+
+      if (mode === "percent") {
+        percentBtn.className = "flex-1 py-2.5 rounded-lg text-xs font-bold transition bg-white text-indigo-600 shadow-sm";
+        gradeBtn.className = "flex-1 py-2.5 rounded-lg text-xs font-bold text-slate-500 transition hover:text-slate-700";
+        percentContainer.classList.remove("hidden");
+        gradeContainer.classList.add("hidden");
+      } else {
+        gradeBtn.className = "flex-1 py-2.5 rounded-lg text-xs font-bold transition bg-white text-indigo-600 shadow-sm";
+        percentBtn.className = "flex-1 py-2.5 rounded-lg text-xs font-bold text-slate-500 transition hover:text-slate-700";
+        gradeContainer.classList.remove("hidden");
+        percentContainer.classList.add("hidden");
+      }
     }
-</script>
+
+    function updatePercentValue(val) {
+      currentState.percentile = parseInt(val);
+      document.getElementById("percentValueDisplay").textContent = val;
+    }
+
+    function toggleSubject(subjectName, btnElement) {
+      const idx = currentState.preferredSubjects.indexOf(subjectName);
+      if (idx > -1) {
+        currentState.preferredSubjects.splice(idx, 1);
+        btnElement.classList.remove("border-indigo-600", "bg-indigo-50", "text-indigo-600");
+        btnElement.classList.add("border-slate-200", "text-slate-700");
+      } else {
+        if (currentState.preferredSubjects.length >= 3) {
+          alert("선호 과목은 최대 3개까지 선택할 수 있습니다.");
+          return;
+        }
+        currentState.preferredSubjects.push(subjectName);
+        btnElement.classList.add("border-indigo-600", "bg-indigo-50", "text-indigo-600");
+        btnElement.classList.remove("border-slate-200", "text-slate-700");
+      }
+    }
+
+    /* ==========================================================================
+       6. RECOMMENDATION ALGORITHM & GENDER FILTER
+       ========================================================================== */
+    function calculateAndShowResults() {
+      // 1. Filter out by Gender (Male -> Male schools + Coed / Female -> Female schools + Coed)
+      let candidateSchools = HIGH_SCHOOL_DB.filter(school => {
+        if (currentState.gender === "male") {
+          return school.genderType === "male" || school.genderType === "coed";
+        } else {
+          return school.genderType === "female" || school.genderType === "coed";
+        }
+      });
+
+      // 2. Filter by Preferred High School Types
+      if (currentState.schoolTypes.length > 0) {
+        candidateSchools = candidateSchools.filter(school => currentState.schoolTypes.includes(school.type));
+      }
+
+      // 3. Compute Match Score (0 - 100%)
+      const userPercentile = currentState.scoreMode === "percent" ? currentState.percentile : calculatePercentileFromGrades();
+
+      candidateSchools = candidateSchools.map(school => {
+        let score = 70; // Base score
+
+        // Location Proximity Score
+        if (school.sido === currentState.sido && school.sigungu === currentState.sigungu) {
+          score += 15;
+          if (school.dong === currentState.dong) score += 5;
+        }
+
+        // Subject Match
+        const matchingSubjects = school.strongSubjects.filter(sub => currentState.preferredSubjects.includes(sub));
+        score += (matchingSubjects.length * 5);
+
+        // Grade Compatibility
+        if (userPercentile <= school.minPercentile) {
+          score += 10;
+        } else if (userPercentile <= school.minPercentile + 15) {
+          score += 5;
+        } else {
+          score -= 10;
+        }
+
+        // Cap score
+        score = Math.min(99, Math.max(55, score));
+
+        // Get commute time
+        const commute = school.commuteTimes[currentState.middleSchool] || school.commuteTimes["default"] || "대중교통 20분";
+
+        return {
+          ...school,
+          matchScore: score,
+          commuteTimeText: commute
+        };
+      });
+
+      // Sort by match score descending initially
+      candidateSchools.sort((a, b) => b.matchScore - a.matchScore);
+      filteredRecommendations = candidateSchools;
+
+      // Render Dashboard Header Summary
+      const genderText = currentState.gender === "male" ? "남학생" : "여학생";
+      document.getElementById("userSummarySchool").textContent = `${currentState.middleSchool || '입력된 중학교'}`;
+      document.getElementById("userSummaryDetail").textContent = 
+        `${currentState.sido} ${currentState.sigungu} ${currentState.dong} | ${genderText} | 내신 상위 ${userPercentile}% | 선호: ${currentState.preferredSubjects.join(", ") || "전과목"}`;
+
+      // Render Grid
+      renderSchoolList(filteredRecommendations);
+
+      // Hide Wizard & Show Dashboard
+      document.getElementById("wizardContainer").classList.add("hidden");
+      document.getElementById("stepBarContainer").classList.add("hidden");
+      document.getElementById("resultsDashboard").classList.remove("hidden");
+    }
+
+    function calculatePercentileFromGrades() {
+      // Simple grade to percentile mapping mockup
+      const g = currentState.grades;
+      let scoreSum = 0;
+      Object.values(g).forEach(val => {
+        if (val === 'A') scoreSum += 4;
+        if (val === 'B') scoreSum += 3;
+        if (val === 'C') scoreSum += 2;
+        if (val === 'D') scoreSum += 1;
+      });
+      // 20 max -> 4 = 5%, 0 = 60%
+      return Math.max(5, Math.min(80, Math.round(100 - (scoreSum / 20) * 95)));
+    }
+
+    /* ==========================================================================
+       7. RENDER DASHBOARD & CARDS
+       ========================================================================== */
+    function renderSchoolList(list) {
+      const container = document.getElementById("schoolListGrid");
+      container.innerHTML = "";
+
+      if (list.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full py-16 text-center bg-white rounded-3xl border border-slate-200">
+            <i class="fa-solid fa-graduation-cap text-4xl text-slate-300 mb-3 block"></i>
+            <p class="font-bold text-slate-600">선택하신 조건(성별/유형)에 맞는 고등학교를 찾을 수 없습니다.</p>
+            <p class="text-xs text-slate-400 mt-1">고교 유형 선택을 넓히시거나 거주 지역을 재선택해 보세요.</p>
+          </div>
+        `;
+        return;
+      }
+
+      list.forEach(school => {
+        const isBookmarked = currentState.bookmarks.some(b => b.id === school.id);
+        const card = document.createElement("div");
+        card.className = "school-card bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm hover:shadow-md flex flex-col justify-between relative overflow-hidden";
+        
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-indigo-50 text-indigo-600 border border-indigo-100">${school.type}</span>
+                <span class="px-2 py-1 rounded-lg text-xs font-bold ${school.genderType === 'male' ? 'bg-blue-50 text-blue-600' : school.genderType === 'female' ? 'bg-pink-50 text-pink-600' : 'bg-slate-100 text-slate-600'}">
+                  ${school.genderText}
+                </span>
+              </div>
+              <button onclick="toggleBookmark('${school.id}', event)" class="text-slate-300 hover:text-amber-400 transition text-lg">
+                <i class="${isBookmarked ? 'fa-solid text-amber-400' : 'fa-regular'} fa-bookmark"></i>
+              </button>
+            </div>
+
+            <h3 class="text-xl font-extrabold text-slate-900 mb-1">${school.name}</h3>
+            <p class="text-xs text-slate-400 mb-4"><i class="fa-solid fa-location-dot text-rose-400"></i> ${school.sido} ${school.sigungu} ${school.dong}</p>
+
+            <div class="bg-slate-50 rounded-2xl p-3.5 mb-4 space-y-2 text-xs">
+              <div class="flex justify-between items-center">
+                <span class="text-slate-400 font-medium">추천 적합도</span>
+                <span class="font-black text-indigo-600 text-sm">${school.matchScore}%</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-slate-400 font-medium">예상 통학시간</span>
+                <span class="font-bold text-slate-700"><i class="fa-solid fa-bus text-indigo-400 mr-1"></i>${school.commuteTimeText}</span>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-1.5 mb-6">
+              ${school.strongSubjects.map(sub => `<span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-semibold"># ${sub}</span>`).join('')}
+            </div>
+          </div>
+
+          <button onclick="openModal('${school.id}')" class="w-full py-3 rounded-xl bg-slate-100 hover:bg-indigo-600 hover:text-white text-slate-700 text-xs font-bold transition flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-circle-info"></i> 상세보기 및 분석
+          </button>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function filterResults(type) {
+      document.querySelectorAll('.filter-tab-btn').forEach(btn => {
+        btn.className = "filter-tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition whitespace-nowrap";
+      });
+      event.target.className = "filter-tab-btn active px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow-sm transition whitespace-nowrap";
+
+      if (type === 'all') {
+        renderSchoolList(filteredRecommendations);
+      } else {
+        const filtered = filteredRecommendations.filter(s => s.type === type);
+        renderSchoolList(filtered);
+      }
+    }
+
+    function sortResults(criterion) {
+      if (criterion === "match") {
+        filteredRecommendations.sort((a, b) => b.matchScore - a.matchScore);
+      } else if (criterion === "distance") {
+        filteredRecommendations.sort((a, b) => a.commuteTimeText.localeCompare(b.commuteTimeText));
+      } else if (criterion === "academic") {
+        filteredRecommendations.sort((a, b) => a.minPercentile - b.minPercentile);
+      }
+      renderSchoolList(filteredRecommendations);
+    }
+
+    /* ==========================================================================
+       8. MODAL & BOOKMARK SYSTEM
+       ========================================================================== */
+    let activeModalSchoolId = null;
+
+    function openModal(schoolId) {
+      const school = HIGH_SCHOOL_DB.find(s => s.id === schoolId);
+      if (!school) return;
+
+      activeModalSchoolId = schoolId;
+
+      document.getElementById("modalSchoolBadge").textContent = school.type;
+      document.getElementById("modalGenderBadge").textContent = school.genderText;
+      document.getElementById("modalSchoolName").textContent = school.name;
+      document.getElementById("modalSchoolAddress").innerHTML = `<i class="fa-solid fa-location-dot text-rose-500"></i> ${school.sido} ${school.sigungu} ${school.dong}`;
+      
+      const computedScore = school.matchScore || 85;
+      document.getElementById("modalMatchScore").textContent = `${computedScore}%`;
+      document.getElementById("modalCommuteTime").textContent = school.commuteTimes[currentState.middleSchool] || "약 15분";
+      document.getElementById("modalTargetGrade").textContent = `상위 ${school.minPercentile}% 이내`;
+
+      document.getElementById("modalCommuteDetail").textContent = 
+        `현재 ${currentState.middleSchool || '선택 중학교'} 출발 기준 : ${school.commuteTimes[currentState.middleSchool] || '대중교통 이용 약 15~20분 거리'}`;
+
+      const featuresUl = document.getElementById("modalFeaturesList");
+      featuresUl.innerHTML = school.features.map(f => `<li class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-emerald-500 mt-0.5"></i> <span>${f}</span></li>`).join('');
+
+      document.getElementById("modalCareerInfo").textContent = school.careerInfo;
+
+      updateModalBookmarkBtn();
+      document.getElementById("schoolDetailModal").classList.remove("hidden");
+    }
+
+    function closeModal() {
+      document.getElementById("schoolDetailModal").classList.add("hidden");
+    }
+
+    function toggleBookmark(schoolId, e) {
+      if (e) e.stopPropagation();
+      const school = HIGH_SCHOOL_DB.find(s => s.id === schoolId);
+      const idx = currentState.bookmarks.findIndex(b => b.id === schoolId);
+
+      if (idx > -1) {
+        currentState.bookmarks.splice(idx, 1);
+      } else {
+        currentState.bookmarks.push(school);
+      }
+
+      updateBookmarkBadge();
+      if (!document.getElementById("resultsDashboard").classList.contains("hidden")) {
+        renderSchoolList(filteredRecommendations);
+      }
+    }
+
+    function toggleModalBookmark() {
+      if (!activeModalSchoolId) return;
+      toggleBookmark(activeModalSchoolId);
+      updateModalBookmarkBtn();
+    }
+
+    function updateModalBookmarkBtn() {
+      const isBookmarked = currentState.bookmarks.some(b => b.id === activeModalSchoolId);
+      const btn = document.getElementById("modalBookmarkBtn");
+      if (isBookmarked) {
+        btn.className = "px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50 text-xs font-bold text-amber-700 hover:bg-amber-100 transition flex items-center gap-1.5";
+        btn.innerHTML = `<i class="fa-solid fa-bookmark text-amber-500"></i> 북마크됨`;
+      } else {
+        btn.className = "px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-100 transition flex items-center gap-1.5";
+        btn.innerHTML = `<i class="fa-regular fa-bookmark"></i> 북마크 저장`;
+      }
+    }
+
+    function updateBookmarkBadge() {
+      const badge = document.getElementById("bookmarkBadge");
+      const count = currentState.bookmarks.length;
+      if (count > 0) {
+        badge.textContent = count;
+        badge.classList.remove("hidden");
+      } else {
+        badge.classList.add("hidden");
+      }
+    }
+
+    function toggleBookmarksModal() {
+      const modal = document.getElementById("bookmarksModal");
+      const listContainer = document.getElementById("bookmarksList");
+
+      if (modal.classList.contains("hidden")) {
+        listContainer.innerHTML = "";
+        if (currentState.bookmarks.length === 0) {
+          listContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-8">보관된 고등학교가 없습니다.</p>`;
+        } else {
+          currentState.bookmarks.forEach(sch => {
+            const item = document.createElement("div");
+            item.className = "p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between";
+            item.innerHTML = `
+              <div>
+                <span class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">${sch.type}</span>
+                <h4 class="font-bold text-sm text-slate-800 mt-1">${sch.name}</h4>
+                <span class="text-xs text-slate-400">${sch.sido} ${sch.sigungu}</span>
+              </div>
+              <button onclick="toggleBookmark('${sch.id}'); toggleBookmarksModal();" class="text-xs text-rose-500 hover:underline">삭제</button>
+            `;
+            listContainer.appendChild(item);
+          });
+        }
+        modal.classList.remove("hidden");
+      } else {
+        modal.classList.add("hidden");
+      }
+    }
+
+    function resetApp() {
+      currentState.step = 1;
+      currentState.sido = "";
+      currentState.sigungu = "";
+      currentState.dong = "";
+      currentState.middleSchool = "";
+      currentState.preferredSubjects = [];
+
+      document.getElementById("sidoSelect").value = "";
+      document.getElementById("sigunguSelect").value = "";
+      document.getElementById("dongSelect").value = "";
+      document.getElementById("middleSchoolSelect").value = "";
+      hideCustomInputs();
+
+      document.querySelectorAll(".subject-btn").forEach(btn => {
+        btn.classList.remove("border-indigo-600", "bg-indigo-50", "text-indigo-600");
+        btn.classList.add("border-slate-200", "text-slate-700");
+      });
+
+      updateStepUI();
+    }
+  </script>
 </body>
 </html>
